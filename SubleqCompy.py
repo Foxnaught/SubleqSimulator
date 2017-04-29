@@ -1,5 +1,177 @@
 
 
+dataPointer = 0
+memPointer = 0
+def parseSource(RAM):
+	global dataPointer
+	global memPointer
+	f = open("hello_world.asm", "r")
+	#Where values are stored
+	memPointer = 1000
+	#Address in memory that instructions begin
+	startPointer = 0
+	#Current point in memory (RAM)
+	dataPointer = 0
+	#The virtual pointer points to a line in assembly
+	#We will map these values to dataPointer values after interpreting them
+	virtualPointer = 0
+	virtualMemory = [-1]
+	dataStore = {"buffer": len(RAM)-1, "buffer2": len(RAM)-2}
+	labels = {}
+
+	for line in f:
+		if line.replace(" ", "").replace("\t", "").replace("\n", "") == "":
+			continue
+
+		print(line)
+		virtualMemory.append(dataPointer)
+		vals = line.replace("\n", "").split(" ")
+		if len(vals) > 1 and vals[1] == "=":
+			#Define where the variable values are in memory
+			#We will replace variable names with these address values here after
+			dataStore[vals[0]] = memPointer
+			try:
+				RAM[memPointer] = int(vals[2])
+				memPointer += 1
+			except:
+				for i in vals[2]:
+					RAM[memPointer] = ord(i)
+					memPointer += 1
+
+				RAM[memPointer] = ord("\0")
+				memPointer += 1
+
+		elif vals[0] == "LABEL":
+			labels[vals[1]] = dataPointer
+		elif vals[0] == "ADD":
+			a1 = 0
+			a2 = 0
+			if vals[1] in list(dataStore.keys()):
+				a1 = dataStore[vals[1]]
+			else:
+				#Unassigned reference
+				exit()
+				pass
+
+			if vals[2] in list(dataStore.keys()):
+				a2 = dataStore[vals[2]]
+			else:
+				#Unassigned reference
+				exit()
+				pass
+
+			#Clear the buffer
+			RAM[dataPointer] = dataStore["buffer"]
+			RAM[dataPointer+1] = dataStore["buffer"]
+			RAM[dataPointer+2] = dataPointer+3
+
+			#BUFFER = -B
+			RAM[dataPointer+3] = a2
+			RAM[dataPointer+4] = dataStore["buffer"]
+			RAM[dataPointer+5] = dataPointer+6
+
+			#BUFFER = -B-A
+			RAM[dataPointer+6] = a1
+			RAM[dataPointer+7] = dataStore["buffer"]
+			RAM[dataPointer+8] = dataPointer+9
+
+			#B = 0
+			RAM[dataPointer+9] = a2
+			RAM[dataPointer+10] = a2
+			RAM[dataPointer+11] = dataPointer+12
+
+			#B = -BUFFER = B+A
+			RAM[dataPointer+12] = dataStore["buffer"]
+			RAM[dataPointer+13] = a2
+			RAM[dataPointer+14] = -1
+
+			dataPointer += 15
+
+		elif vals[0] == "SUB":
+			a1 = dataStore[vals[1]]
+			a2 = dataStore[vals[2]]
+
+			RAM[dataPointer] = a1
+			RAM[dataPointer+1] = a2
+			RAM[dataPointer+2] = dataPointer + 3
+			dataPointer += 3
+
+		elif vals[0] == "JMP":
+			RAM[dataPointer] = dataStore["buffer"]
+			RAM[dataPointer+1] = dataStore["buffer"]
+			RAM[dataPointer+2] = vals[1]
+
+			dataPointer += 3
+
+		#JUMP IF LESS THAN OR EQUAL (JUMP A B C | A <= B -> C)
+		elif vals[0] == "JLE":
+			a1 = dataStore[vals[1]]
+			a2 = dataStore[vals[2]]
+			#Logical line address (line address in assembly)
+			#We must convert this to a dataPointer value
+			jmpAddr = vals[3]
+
+			RAM[dataPointer] = dataStore["buffer"]
+			RAM[dataPointer+1] = dataStore["buffer"]
+			RAM[dataPointer+2] = dataPointer + 3
+
+			RAM[dataPointer+3] = dataStore["buffer2"]
+			RAM[dataPointer+4] = dataStore["buffer2"]
+			RAM[dataPointer+5] = dataPointer + 6
+
+			#BUFFER = -a1
+			RAM[dataPointer+6] = a1
+			RAM[dataPointer+7] = dataStore["buffer"]
+			RAM[dataPointer+8] = dataPointer + 9
+
+			#BUFFER2 = -a2
+			RAM[dataPointer+9] = a2
+			RAM[dataPointer+10] = dataStore["buffer2"]
+			RAM[dataPointer+11] = dataPointer + 12
+
+			#BUFFER2 = a1 - a2
+			RAM[dataPointer+12] = dataStore["buffer"]
+			RAM[dataPointer+13] = dataStore["buffer2"]
+			#Virtual Addressing, jmpAddr is a string that points to a label which is mapped to a dataPointer value (physical address)
+			RAM[dataPointer+14] = jmpAddr
+
+			dataPointer += 15
+
+		elif vals[0] == "PRINT":
+			RAM[dataPointer] = dataStore["buffer"]
+			RAM[dataPointer+1] = dataStore["buffer"]
+			RAM[dataPointer+2] = dataPointer+3
+
+			RAM[dataPointer+3] = dataStore[vals[1]]
+			RAM[dataPointer+4] = dataStore["buffer"]
+			RAM[dataPointer+5] = -3
+
+			dataPointer += 6
+
+		elif vals[0] == "PRINTC":
+			RAM[dataPointer] = dataStore["buffer"]
+			RAM[dataPointer+1] = dataStore["buffer"]
+			RAM[dataPointer+2] = dataPointer+3
+
+			RAM[dataPointer+3] = dataStore[vals[1]]
+			RAM[dataPointer+4] = dataStore["buffer"]
+			RAM[dataPointer+5] = -4
+
+			dataPointer += 6
+
+		elif vals[0] == "EXIT":
+			RAM[dataPointer] = dataStore["buffer"]
+			RAM[dataPointer+1] = dataStore["buffer"]
+			RAM[dataPointer+2] = -1
+
+			dataPointer += 3
+
+	f.close()
+
+	#Turn logical addresses into physical addresses
+	for i in range(len(RAM)):
+		if isinstance(RAM[i], str):
+			RAM[i] = labels[RAM[i]]
 
 
 def SubleqCompy():
@@ -37,38 +209,24 @@ def SubleqCompy():
 	_JMP = 0
 	_HOLD = 0
 
+	#Our memory
 	RAM = [0]*10000
-	RAM[1000] = 1111111
-	RAM[1001] = 9876543
-	RAM[1002] = 1
-	RAM[1003] = 0
-	RAM[1004] = 0
-	
-	RAM[0] = 1003
-	RAM[1] = 1000
-	RAM[2] = 12
 
-	RAM[3] = 1002
-	RAM[4] = 1000
-	RAM[5] = 9
-
-	RAM[6] = 1001
-	RAM[7] = 1004
-	RAM[8] = 3
-
-	RAM[9] = 1001
-	RAM[10] = 1004
-	RAM[11] = 12
-
-	RAM[12] = 1001
-	RAM[13] = 1003
-	RAM[14] = -1
+	#Read the assembly and turn it into subleq code, put definitions (variable values) and instructions into memory
+	parseSource(RAM)
 
 	I = 0
 	CC = 0
-	print("  CC,   IP, ADDR,  VAL,    A,    B")
+	#We do special functions by designating IP to be a negative value
+	#We hold the starting addr of the current subleq instruction so when we encounter this special function
+	#	we simply move ontot he next subleq instruction afterward
+	currAddr = 0
+	print("  CC,   IP, ADDR,  VAL,    A,    B,  SUBO")
+	print("-----------------------------------------")
 	while running:
-		#print("%4s, %4s, %4s, %4s, %4s, %4s" % (CC, IP, ADDR, VAL, A, B))
+		#print("%4.d, %4.d, %4.d, %4.d, %4.d, %4.d, %4.d" % (CC, IP, ADDR, VAL, A, B, SUBO))
+		if CC == 0:
+			currAddr = _IP
 
 		IPSEL = 0
 		DIRSEL = 0
@@ -156,7 +314,18 @@ def SubleqCompy():
 		else:
 			JMP = 0
 
-		
+		#END OF INSTRUCTION
+		if IP == -3 or IP == -4:
+			if IP == -3:
+				print(-_SUBO)
+			else:
+				print(chr(-_SUBO), end="")
+
+			IP = currAddr + 3
+			IPP1 = IP + 1
+		if IP == -1:
+			print("EXITING")
+			running = False
 
 		_ADDR = ADDR
 		_SUBO = SUBO
@@ -180,10 +349,11 @@ def SubleqCompy():
 		if CC == 0:
 			I += 1
 
-		if IP == -1:
-			running = False
+		
 
 	print("Instructions: " + str(I))
-	print("RAM: " + str(RAM[1004]))
+	print(memPointer+dataPointer-1000)
+
+
 
 SubleqCompy()
