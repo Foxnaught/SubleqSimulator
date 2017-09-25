@@ -16,7 +16,7 @@ A = B     | address A has the same pointing value as address B
 
 ADD A B   | (A) is added to (B) and the value is stored at address B
 
-SUB A B   | (A) is substracted from (B) and the value is stored at address B
+SUB A B   | (A) is subtracted from (B) and the value is stored at address B
 
 JMP A     | Jump to the instruction below LABEL A
 
