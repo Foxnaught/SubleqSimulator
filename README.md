@@ -5,7 +5,9 @@ Running SubleqCompy.py will cause the pseudo-code in hello_world.asm to be inter
 The subleq simulator implementation has special hardware interrupts when certain addresses are targetted. Currently special addresses (interrupts) are negative.
 
 LEGEND:
+
 A = the address to a value which points to another address in memory
+
 (A) = the value where the pointer address points to.
 
 COMMANDS:
