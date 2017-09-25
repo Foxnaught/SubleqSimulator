@@ -14,7 +14,7 @@ COMMANDS:
 
 LABEL A   | creates a virtual address named A which can be used in jump destinations
 
-A = B     | address A has the same pointing value as address B
+A = B     | address A has the same value as address B
 
 ADD A B   | (A) is added to (B) and the value is stored at address B
 
